@@ -42,7 +42,15 @@ class ScanResultsWiFiInfo : public PollingComponent, public text_sensor::TextSen
       this->last_scan_results_ = scan_results;
       // There's a limit of 255 characters per state.
       // Longer states just don't get sent so we truncate it.
-      this->publish_state(scan_results.substr(0, 255));
+      // However, if the SSIDs are UTF-8 truncating may return
+      // an incomplete multibyte character as last byte.
+      // To avoid problems, we check, if the last byte is in ASCII
+      // range and if not discard it.
+      if (scan_results[254] >= 0x00 && scan_results[254] <= 0x7F) {
+        this->publish_state(scan_results.substr(0, 255));
+      } else {
+        this->publish_state(scan_results.substr(0, 254));
+      }
     }
   }
   float get_setup_priority() const override { return setup_priority::AFTER_WIFI; }
